@@ -1,0 +1,428 @@
+#!/bin/bash
+
+# Main function to display the primary menu
+function mainMenu {
+    clear
+    echo "========================================="
+    echo "       Bash DBMS - Main Menu"
+    echo "========================================="
+    echo "1. Create Database"
+    echo "2. List Databases"
+    echo "3. Connect To Database"
+    echo "4. Drop Database"
+    echo "5. Exit"
+    echo "========================================="
+    read -p "Enter your choice: " choice
+
+    case $choice in
+        1) createDB ;;
+        2) listDBs ;;
+        3) connectDB ;;
+        4) dropDB ;;
+        5) exit 0 ;;
+        *) echo "Invalid choice. Please try again." ; sleep 2 ; mainMenu ;;
+    esac
+}
+
+# Function to create a new database
+function createDB {
+    clear
+    read -p "Enter database name to create: " dbName
+    if [ -d "$dbName" ]; then
+        echo "Error: Database '$dbName' already exists."
+    else
+        mkdir "$dbName"
+        echo "Database '$dbName' created successfully."
+    fi
+    sleep 2
+    mainMenu
+}
+
+# Function to list all databases
+function listDBs {
+    clear
+    echo "========================================="
+    echo "        List of Databases"
+    echo "========================================="
+    ls -d */ 2>/dev/null | cut -d'/' -f1
+    echo "========================================="
+    read -p "Press Enter to return to main menu..."
+    mainMenu
+}
+
+# Function to connect to a database
+function connectDB {
+    clear
+    read -p "Enter database name to connect to: " dbName
+    if [ -d "$dbName" ]; then
+        cd "$dbName"
+        echo "Connected to database '$dbName'."
+        tableMenu
+    else
+        echo "Error: Database '$dbName' does not exist."
+        sleep 2
+        mainMenu
+    fi
+}
+
+# Function to drop a database
+function dropDB {
+    clear
+    read -p "Enter database name to drop: " dbName
+    if [ -d "$dbName" ]; then
+        read -p "Are you sure you want to drop '$dbName'? (y/n): " confirm
+        if [[ "$confirm" == "y" || "$confirm" == "Y" ]]; then
+            rm -r "$dbName"
+            echo "Database '$dbName' dropped successfully."
+        else
+            echo "Operation cancelled."
+        fi
+    else
+        echo "Error: Database '$dbName' does not exist."
+    fi
+    sleep 2
+    mainMenu
+}
+
+# Table management menu
+function tableMenu {
+    clear
+    echo "========================================="
+    echo "   Database '$PWD' - Table Menu"
+    echo "========================================="
+    echo "1. Create Table"
+    echo "2. List Tables"
+    echo "3. Drop Table"
+    echo "4. Insert into Table"
+    echo "5. Select From Table"
+    echo "6. Delete From Table"
+    echo "7. Update Table"
+    echo "8. Disconnect"
+    echo "========================================="
+    read -p "Enter your choice: " choice
+
+    case $choice in
+        1) createTable ;;
+        2) listTables ;;
+        3) dropTable ;;
+        4) insertIntoTable ;;
+        5) selectFromTable ;;
+        6) deleteFromTable ;;
+        7) updateTable ;;
+        8) disconnect ;;
+        *) echo "Invalid choice. Please try again." ; sleep 2 ; tableMenu ;;
+    esac
+}
+
+# Function to disconnect from the current database
+function disconnect {
+    cd ..
+    echo "Disconnected from database."
+    sleep 2
+    mainMenu
+}
+
+# Function to create a new table
+function createTable {
+    clear
+    read -p "Enter table name to create: " tableName
+    if [ -f "$tableName" ]; then
+        echo "Error: Table '$tableName' already exists."
+    else
+        read -p "Enter column names (separated by commas): " columns
+        read -p "Enter datatypes (separated by commas, e.g., str,int,str): " datatypes
+        read -p "Enter primary key column name: " pk
+        
+        # Check if primary key exists in columns
+        if [[ ! ",$columns," =~ ",$pk," ]]; then
+            echo "Error: Primary key '$pk' not found in column names."
+            sleep 2
+            tableMenu
+            return
+        fi
+        
+        echo "$columns" > "$tableName"
+        echo "$datatypes" >> "$tableName"
+        echo "$pk" >> "$tableName"
+        echo "Table '$tableName' created successfully."
+    fi
+    sleep 2
+    tableMenu
+}
+
+# Function to list tables
+function listTables {
+    clear
+    echo "========================================="
+    echo "          List of Tables"
+    echo "========================================="
+    ls -p | grep -v /
+    echo "========================================="
+    read -p "Press Enter to return to table menu..."
+    tableMenu
+}
+
+# Function to drop a table
+function dropTable {
+    clear
+    read -p "Enter table name to drop: " tableName
+    if [ -f "$tableName" ]; then
+        read -p "Are you sure you want to drop '$tableName'? (y/n): " confirm
+        if [[ "$confirm" == "y" || "$confirm" == "Y" ]]; then
+            rm "$tableName"
+            echo "Table '$tableName' dropped successfully."
+        else
+            echo "Operation cancelled."
+        fi
+    else
+        echo "Error: Table '$tableName' does not exist."
+    fi
+    sleep 2
+    tableMenu
+}
+
+# Function to insert data into a table
+function insertIntoTable {
+    clear
+    read -p "Enter table name to insert into: " tableName
+    if [ ! -f "$tableName" ]; then
+        echo "Error: Table '$tableName' does not exist."
+        sleep 2
+        tableMenu
+        return
+    fi
+    
+    # Read table metadata
+    columns=$(head -n 1 "$tableName")
+    datatypes=$(head -n 2 "$tableName" | tail -n 1)
+    pk=$(head -n 3 "$tableName" | tail -n 1)
+    
+    OIFS=$IFS
+    IFS=','
+    read -a cols_array <<< "$columns"
+    read -a types_array <<< "$datatypes"
+    
+    record=""
+    
+    # Get primary key index
+    pk_index=-1
+    for i in "${!cols_array[@]}"; do
+        if [[ "${cols_array[$i]}" == "$pk" ]]; then
+            pk_index=$i
+            break
+        fi
+    done
+    
+    # Prompt for each column
+    for i in "${!cols_array[@]}"; do
+        colName="${cols_array[$i]}"
+        colType="${types_array[$i]}"
+        read -p "Enter value for '$colName' ($colType): " value
+        
+        # Data validation
+        if [[ "$colType" == "int" && ! "$value" =~ ^[0-9]+$ ]]; then
+            echo "Error: Invalid data type for '$colName'. Expected integer."
+            sleep 2
+            IFS=$OIFS
+            tableMenu
+            return
+        fi
+        
+        # Primary key uniqueness check
+        if [ "$i" -eq "$pk_index" ]; then
+            if grep -q "^$value" "$tableName"; then
+                echo "Error: Primary key value '$value' already exists."
+                sleep 2
+                IFS=$OIFS
+                tableMenu
+                return
+            fi
+        fi
+        
+        if [ -z "$record" ]; then
+            record="$value"
+        else
+            record="$record,$value"
+        fi
+    done
+    
+    IFS=$OIFS
+    
+    echo "$record" >> "$tableName"
+    echo "Record inserted successfully."
+    sleep 2
+    tableMenu
+}
+
+# Function to select and display data from a table
+function selectFromTable {
+    clear
+    read -p "Enter table name to select from: " tableName
+    if [ ! -f "$tableName" ]; then
+        echo "Error: Table '$tableName' does not exist."
+        sleep 2
+        tableMenu
+        return
+    fi
+    
+    # Read and display headers
+    columns=$(head -n 1 "$tableName")
+    echo "$columns" | sed 's/,/\t/g'
+    echo "-----------------------------------------"
+    
+    # Read and display data
+    tail -n +4 "$tableName" | sed 's/,/\t/g'
+    echo "-----------------------------------------"
+    
+    read -p "Press Enter to return to table menu..."
+    tableMenu
+}
+
+# Function to delete a row from a table
+function deleteFromTable {
+    clear
+    read -p "Enter table name to delete from: " tableName
+    if [ ! -f "$tableName" ]; then
+        echo "Error: Table '$tableName' does not exist."
+        sleep 2
+        tableMenu
+        return
+    fi
+    
+    columns=$(head -n 1 "$tableName")
+    pk=$(head -n 3 "$tableName" | tail -n 1)
+    
+    read -p "Enter value of primary key '$pk' to delete: " pkValue
+    
+    # Get primary key column index
+    OIFS=$IFS
+    IFS=','
+    read -a cols_array <<< "$columns"
+    pk_index=-1
+    for i in "${!cols_array[@]}"; do
+        if [[ "${cols_array[$i]}" == "$pk" ]]; then
+            pk_index=$i
+            break
+        fi
+    done
+    IFS=$OIFS
+    
+    if [ $pk_index -eq -1 ]; then
+        echo "Error: Primary key column not found."
+        sleep 2
+        tableMenu
+        return
+    fi
+
+    # Create a temporary file
+    tempFile=$(mktemp)
+    
+    # Copy all lines except the one to be deleted to the temp file
+    pk_field_grep_pattern="^([^,]*,){$pk_index}$pkValue,"
+    
+    head -n 3 "$tableName" > "$tempFile"
+    grep -vE "^$pkValue" "$tableName" | grep -vE "^([^,]*?,){$((pk_index))}$pkValue\$" >> "$tempFile"
+
+    # Count the number of lines removed
+    lines_before=$(wc -l < "$tableName")
+    lines_after=$(wc -l < "$tempFile")
+    lines_removed=$((lines_before - lines_after))
+
+    if [ $lines_removed -gt 0 ]; then
+        mv "$tempFile" "$tableName"
+        echo "Record with primary key '$pkValue' deleted successfully."
+    else
+        rm "$tempFile"
+        echo "Error: Record with primary key '$pkValue' not found."
+    fi
+    
+    sleep 2
+    tableMenu
+}
+
+# Function to update a row in a table
+function updateTable {
+    clear
+    read -p "Enter table name to update: " tableName
+    if [ ! -f "$tableName" ]; then
+        echo "Error: Table '$tableName' does not exist."
+        sleep 2
+        tableMenu
+        return
+    fi
+    
+    columns=$(head -n 1 "$tableName")
+    datatypes=$(head -n 2 "$tableName" | tail -n 1)
+    pk=$(head -n 3 "$tableName" | tail -n 1)
+    
+    read -p "Enter value of primary key '$pk' to update: " pkValue
+    
+    # Check if record exists
+    if ! grep -q "^$pkValue" "$tableName"; then
+        echo "Error: Record with primary key '$pkValue' not found."
+        sleep 2
+        tableMenu
+        return
+    fi
+    
+    OIFS=$IFS
+    IFS=','
+    read -a cols_array <<< "$columns"
+    read -a types_array <<< "$datatypes"
+    IFS=$OIFS
+
+    # Find the line to update
+    line_number=$(grep -n "^$pkValue" "$tableName" | cut -d: -f1)
+    
+    record=""
+    
+    # Prompt for each column, allowing a blank entry to keep the old value
+    for i in "${!cols_array[@]}"; do
+        colName="${cols_array[$i]}"
+        colType="${types_array[$i]}"
+        
+        read -p "Enter new value for '$colName' ($colType) [press Enter to keep old value]: " newValue
+        
+        if [ -z "$newValue" ]; then
+            # Keep the old value
+            if [ -z "$record" ]; then
+                record=$(grep -E "^$pkValue" "$tableName" | cut -d',' -f"$((i+1))")
+            else
+                record="$record,$(grep -E "^$pkValue" "$tableName" | cut -d',' -f"$((i+1))")"
+            fi
+        else
+            # Validate new value
+            if [[ "$colType" == "int" && ! "$newValue" =~ ^[0-9]+$ ]]; then
+                echo "Error: Invalid data type for '$colName'. Expected integer."
+                sleep 2
+                tableMenu
+                return
+            fi
+            
+            # Primary key uniqueness check
+            if [[ "$colName" == "$pk" && "$newValue" != "$pkValue" ]]; then
+                if grep -q "^$newValue" "$tableName"; then
+                    echo "Error: Primary key value '$newValue' already exists."
+                    sleep 2
+                    tableMenu
+                    return
+                fi
+            fi
+            
+            if [ -z "$record" ]; then
+                record="$newValue"
+            else
+                record="$record,$newValue"
+            fi
+        fi
+    done
+    
+    # Update the line in the file
+    sed -i "${line_number}s/.*/$record/" "$tableName"
+    echo "Record updated successfully."
+    sleep 2
+    tableMenu
+}
+
+# Start the application
+mainMenu
