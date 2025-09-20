@@ -38,10 +38,61 @@ This project simulates the basic functionality of a DBMS using **directories** f
 - **Disconnect** → Exit the current database and return to the main menu.  
 - **Exit** → Quit the program.  
 
+
 ---
+
 
 ## 📂 Project Structure
 
 - Each **database** is represented by a directory.  
 - Each **table** is a text file inside its database directory.  
 - File content format:
+
+
+## ▶️ How to Run
+
+1. Clone the repository or copy the script.
+ ```bash
+ git clone https://github.com/your-username/bash-dbms.git
+ cd bash-dbms
+
+2.Make the script executable:
+---
+chmod +x dbms.sh
+3. execute script 
+ ./project.sh
+-------------------------------------------------------
+🛠 Example Usage
+=========================================
+       Bash DBMS - Main Menu
+=========================================
+1. Create Database
+2. List Databases
+3. Connect To Database
+4. Drop Database
+5. Exit
+=========================================
+Enter your choice:
+
+
+Create a database → Connect → Create a table → Insert data → Select data.
+
+
+----------------------------------
+
+
+ --------Future Improvements------------------
+
+Support for more datatypes (float, date, etc.).
+
+Add filtering in SELECT (WHERE clause).
+
+Add exporting/importing tables (CSV).
+
+Implement indexing for faster search.
+
+
+---------------------------------
+Author
+-Ahmed Ezzat
+- MagdyOwies 
